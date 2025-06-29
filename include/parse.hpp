@@ -1,21 +1,57 @@
 #pragma once
 
+#include <concepts>
 #include <expected>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 #include <vector>
-
+#include <print>
 #include "types.hpp"
+#include <array>
+#include <iostream>
 
 namespace stdx::details {
 
-// здесь ваш код
+template< class T >
+concept d = std::same_as<T, int>;
+
+template< class T >
+concept u = std::same_as<T, unsigned int>;
+
+template< class T >
+concept f = std::same_as<T, float>||std::same_as<T, double>;
+
+template< class T >
+concept s = std::same_as<T, std::string>||std::same_as<T, std::string_view>;
 
 // Функция для парсинга значения с учетом спецификатора формата
 template <typename T>
 std::expected<T, scan_error> parse_value_with_format(std::string_view input, std::string_view fmt) {
-    // здесь ваш код
+    bool format=[& fmt]()->bool {
+        if constexpr (d<T>){
+            return fmt.substr(0, 2)=="%d";
+            }
+        else if constexpr (f<T>){
+            return fmt.substr(0, 2)=="%f";
+        }
+        else if constexpr (u<T>){
+            return fmt.substr(0, 2)=="%u";
+        }
+        else if constexpr (s<T>){
+            return fmt.substr(0, 2)=="%s";
+        }
+        else return false;
+    }();
+         
+    if(format){
+        return T{};
+    }
+    else{
+        std::string fmt_str{fmt.begin(), fmt.end()};
+        return std::unexpected(scan_error{"Incorrect format"+fmt_str});
+    }
 }
 
 // Функция для проверки корректности входных данных и выделения из обеих строк интересующих данных для парсинга
