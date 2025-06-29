@@ -10,9 +10,8 @@
             "request": "launch",
             "name": "Launch DymanicScan",
             "program": "${workspaceFolder}/build/scan_tests",
-            "args": [            ],
+            "args": [],
             "cwd": "${workspaceFolder}/build",
-            "preLaunchTask": "GCC: Build Debug app"
         }
 
     ]

@@ -44,11 +44,14 @@ std::expected<T, scan_error> parse_value (std::string_view& input){
     else if (ec == std::errc::result_out_of_range){
         return std::unexpected(scan_error{"Value is out of range"});
     }
+    else{
+        return std::unexpected(scan_error{"Value is out of range"});
+    }
 }
 
 template <s T> 
 std::expected<T, scan_error>parse_value(std::string_view &input){
-    return T{input.begin(), input.end()};
+    return T{input.begin()+1, input.end()-1};
 }
 
 
