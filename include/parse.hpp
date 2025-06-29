@@ -1,6 +1,7 @@
 #pragma once
 
 #include <concepts>
+#include <exception>
 #include <expected>
 #include <string>
 #include <string_view>
@@ -11,6 +12,7 @@
 #include "types.hpp"
 #include <array>
 #include <iostream>
+#include <type_traits>
 
 namespace stdx::details {
 
@@ -25,6 +27,30 @@ concept f = std::same_as<T, float>||std::same_as<T, double>;
 
 template< class T >
 concept s = std::same_as<T, std::string>||std::same_as<T, std::string_view>;
+
+template <class T>
+concept number=d<T>||u<T>||f<T>;
+
+template <number T>
+std::expected<T, scan_error> parse_value (std::string_view& input){
+    T result;
+    auto [ptr, ec] = std::from_chars(input.data()+1, input.data() + input.size()-1, result);
+    if (ec == std::errc()){
+        return result;
+    }
+    else if (ec == std::errc::invalid_argument){
+        return std::unexpected(scan_error{"This is not a number"});
+    }
+    else if (ec == std::errc::result_out_of_range){
+        return std::unexpected(scan_error{"Value is out of range"});
+    }
+}
+
+template <s T> 
+std::expected<T, scan_error>parse_value(std::string_view &input){
+    return T{input.begin(), input.end()};
+}
+
 
 // Функция для парсинга значения с учетом спецификатора формата
 template <typename T>
@@ -46,11 +72,12 @@ std::expected<T, scan_error> parse_value_with_format(std::string_view input, std
     }();
          
     if(format){
-        return T{};
+        auto result=parse_value<T>(input);
+        return result;
     }
     else{
         std::string fmt_str{fmt.begin(), fmt.end()};
-        return std::unexpected(scan_error{"Incorrect format"+fmt_str});
+        return std::unexpected(scan_error{"Incorrect format specifier "+fmt_str});
     }
 }
 

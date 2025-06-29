@@ -4,7 +4,7 @@
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
-    auto result=stdx::details::parse_value_with_format<std::string>("1.0", "%d");
+    auto result=stdx::details::parse_value_with_format<int>("{10000000000000000000000000000}", "%d");
     if(result.has_value()){
         std::cout<<*result<<std::endl;
     }
