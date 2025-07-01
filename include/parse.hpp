@@ -1,90 +1,103 @@
 #pragma once
 
+#include "types.hpp"
 #include <concepts>
-#include <exception>
 #include <expected>
-#include <string>
+#include <print>
 #include <string_view>
 #include <type_traits>
-#include <utility>
 #include <vector>
-#include <print>
-#include "types.hpp"
-#include <array>
-#include <iostream>
-#include <type_traits>
 
 namespace stdx::details {
 
-template< class T >
-concept d = std::same_as<T, int>;
+template <typename T, typename... U>
+concept same_types = (std::same_as<std::remove_cv_t<T>, U> || ...);
 
-template< class T >
-concept u = std::same_as<T, unsigned int>;
+template <typename T>
+concept d = same_types<T, int8_t, int16_t, int32_t>;
 
-template< class T >
-concept f = std::same_as<T, float>||std::same_as<T, double>;
+template <typename T>
+concept u = same_types<T, uint8_t, uint16_t, uint32_t, uint64_t>;
 
-template< class T >
-concept s = std::same_as<T, std::string>||std::same_as<T, std::string_view>;
+template <typename T>
+concept f = std::same_as<std::remove_cv_t<T>, float> || std::same_as<std::remove_cv_t<T>, double>;
 
-template <class T>
-concept number=d<T>||u<T>||f<T>;
+template <typename T>
+concept s = std::same_as<std::remove_cv_t<T>, std::string> || std::same_as<std::remove_cv_t<T>, std::string_view>;
+
+template <typename T>
+concept number = d<T> || u<T> || f<T>;
+
+template <typename T>
+concept correct_type = number<T> || s<T>;
 
 template <number T>
-std::expected<T, scan_error> parse_value (std::string_view& input){
+std::expected<T, scan_error> parse_value(std::string_view input) {
     T result;
-    auto [ptr, ec] = std::from_chars(input.data()+1, input.data() + input.size()-1, result);
-    if (ec == std::errc()){
+    auto [ptr, ec] = std::from_chars(input.data() + 1, input.data() + input.size() - 1, result);
+    if (ec == std::errc()) {
         return result;
-    }
-    else if (ec == std::errc::invalid_argument){
+    } else if (ec == std::errc::invalid_argument) {
         return std::unexpected(scan_error{"This is not a number"});
-    }
-    else if (ec == std::errc::result_out_of_range){
-        return std::unexpected(scan_error{"Value is out of range"});
-    }
-    else{
-        return std::unexpected(scan_error{"Value is out of range"});
+    } else if (ec == std::errc::result_out_of_range) {
+        return std::unexpected(scan_error{"Number is out of range"});
+    } else {
+        return std::unexpected(scan_error{"Number is out of range"});
     }
 }
 
-template <s T> 
-std::expected<T, scan_error>parse_value(std::string_view &input){
-    return T{input.begin()+1, input.end()-1};
+template <s T>
+std::expected<T, scan_error> parse_value(std::string_view input) {
+    return T{input.begin() + 1, input.end() - 1};
 }
 
+template <typename T>
+std::expected<T, scan_error> parse_value(std::string_view input) {
+    return std::unexpected(scan_error{"Incorrect type"});
+}
+
+template <correct_type T>
+consteval bool checkType() {
+    return true;
+}
+
+template <typename T>
+consteval bool checkType() {
+    return false;
+}
 
 // Функция для парсинга значения с учетом спецификатора формата
 template <typename T>
 std::expected<T, scan_error> parse_value_with_format(std::string_view input, std::string_view fmt) {
-    bool format=[& fmt]()->bool {
-        if constexpr (d<T>){
-            return fmt.substr(0, 2)=="%d";
-            }
-        else if constexpr (f<T>){
-            return fmt.substr(0, 2)=="%f";
-        }
-        else if constexpr (u<T>){
-            return fmt.substr(0, 2)=="%u";
-        }
-        else if constexpr (s<T>){
-            return fmt.substr(0, 2)=="%s";
-        }
-        else return false;
-    }();
-         
-    if(format){
-        auto result=parse_value<T>(input);
-        return result;
+
+    if constexpr (!checkType<T>()) {
+        return std::unexpected(scan_error{"Incorrect type "});
     }
-    else{
+
+    bool format = [fmt]() -> bool {
+        if constexpr (d<T>) {
+            return fmt.substr(0, 2) == "%d" && fmt.size() == 2;
+        } else if constexpr (f<T>) {
+            return fmt.substr(0, 2) == "%f" && fmt.size() == 2;
+        } else if constexpr (u<T>) {
+            return fmt.substr(0, 2) == "%u" && fmt.size() == 2;
+        } else if constexpr (s<T>) {
+            return (fmt.substr(0, 2) == "%s" && fmt.size() == 2) || (fmt.size() == 0);
+        } else
+            return false;
+    }();
+
+    if (format) {
+        auto result = parse_value<T>(input);
+        return result;
+    } else {
         std::string fmt_str{fmt.begin(), fmt.end()};
-        return std::unexpected(scan_error{"Incorrect format specifier "+fmt_str});
+        return std::unexpected(scan_error{"Incorrect format specifier " + fmt_str});
     }
 }
 
-// Функция для проверки корректности входных данных и выделения из обеих строк интересующих данных для парсинга
+// Функция для проверки корректности входных данных и выделения из обеих строк
+// интересующих данных для парсинга
 template <typename... Ts>
 std::expected<std::pair<std::vector<std::string_view>, std::vector<std::string_view>>, scan_error>
 parse_sources(std::string_view input, std::string_view format) {
@@ -136,4 +149,4 @@ parse_sources(std::string_view input, std::string_view format) {
     return std::pair{format_parts, input_parts};
 }
 
-} // namespace stdx::details
+}  // namespace stdx::details

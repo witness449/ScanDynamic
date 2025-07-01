@@ -14,9 +14,7 @@ struct scan_error {
 template <typename... Ts>
 struct scan_result {
     std::tuple<Ts...> data;
-    const std::tuple<Ts...>& values () const{
-        return data;
-    }
+    const std::tuple<Ts...> &values() const { return data; }
 };
 
-} // namespace stdx::details
+}  // namespace stdx::details
