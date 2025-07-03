@@ -1,79 +1,47 @@
 #pragma once
 
 #include "types.hpp"
-#include <concepts>
 #include <expected>
 #include <print>
-#include <string_view>
-#include <type_traits>
 #include <vector>
 
 namespace stdx::details {
 
-template <typename T, typename... U>
-concept same_types = (std::same_as<std::remove_cv_t<T>, U> || ...);
-
-template <typename T>
-concept d = same_types<T, int8_t, int16_t, int32_t>;
-
-template <typename T>
-concept u = same_types<T, uint8_t, uint16_t, uint32_t, uint64_t>;
-
-template <typename T>
-concept f = std::same_as<std::remove_cv_t<T>, float> || std::same_as<std::remove_cv_t<T>, double>;
-
-template <typename T>
-concept s = std::same_as<std::remove_cv_t<T>, std::string> || std::same_as<std::remove_cv_t<T>, std::string_view>;
-
-template <typename T>
-concept number = d<T> || u<T> || f<T>;
-
-template <typename T>
-concept correct_type = number<T> || s<T>;
-
+// Парсинг чисел
 template <number T>
 std::expected<T, scan_error> parse_value(std::string_view input) {
-    T result;
-    auto [ptr, ec] = std::from_chars(input.data() + 1, input.data() + input.size() - 1, result);
+    // Использование неконстантной переменной в случае передачи константного типа
+    using remove_const_T = std::remove_const<T>::type;
+    remove_const_T buf;
+    auto [ptr, ec] = std::from_chars(input.data(), input.data() + input.size(), buf);
+    T result = buf;
     if (ec == std::errc()) {
         return result;
     } else if (ec == std::errc::invalid_argument) {
-        return std::unexpected(scan_error{"This is not a number"});
+        return std::unexpected(std::move(scan_error{"This is not a number"}));
     } else if (ec == std::errc::result_out_of_range) {
-        return std::unexpected(scan_error{"Number is out of range"});
+        return std::unexpected(std::move(scan_error{"Number is out of range"}));
     } else {
-        return std::unexpected(scan_error{"Number is out of range"});
+        return std::unexpected(std::move(scan_error{"Unknown error from_chars"}));
     }
 }
 
+// Парсинг строковых типов
 template <s T>
 std::expected<T, scan_error> parse_value(std::string_view input) {
-    return T{input.begin() + 1, input.end() - 1};
+    return T{input.begin(), input.end()};
 }
 
-template <typename T>
+/*template <typename T>
 std::expected<T, scan_error> parse_value(std::string_view input) {
-    return std::unexpected(scan_error{"Incorrect type"});
-}
-
-template <correct_type T>
-consteval bool checkType() {
-    return true;
-}
-
-template <typename T>
-consteval bool checkType() {
-    return false;
-}
+    return std::unexpected(std::move(scan_error{"Incorrect type from parse_value"}));
+}*/
 
 // Функция для парсинга значения с учетом спецификатора формата
 template <typename T>
 std::expected<T, scan_error> parse_value_with_format(std::string_view input, std::string_view fmt) {
 
-    if constexpr (!checkType<T>()) {
-        return std::unexpected(scan_error{"Incorrect type "});
-    }
-
+    // Проверка спецификатора
     bool format = [fmt]() -> bool {
         if constexpr (d<T>) {
             return fmt.substr(0, 2) == "%d" && fmt.size() == 2;
@@ -92,7 +60,7 @@ std::expected<T, scan_error> parse_value_with_format(std::string_view input, std
         return result;
     } else {
         std::string fmt_str{fmt.begin(), fmt.end()};
-        return std::unexpected(scan_error{"Incorrect format specifier " + fmt_str});
+        return std::unexpected(std::move(scan_error{"Incorrect format specifier " + fmt_str}));
     }
 }
 
@@ -120,7 +88,8 @@ parse_sources(std::string_view input, std::string_view format) {
             std::string_view between = format.substr(start, open - start);
             auto pos = input.find(between);
             if (input.size() < between.size() || pos == std::string_view::npos) {
-                return std::unexpected(scan_error{"Unformatted text in input and format string are different"});
+                return std::unexpected(
+                    std::move(scan_error{"Unformatted text in input and format string are different"}));
             }
             if (start != 0) {
                 input_parts.emplace_back(input.substr(0, pos));
@@ -139,7 +108,7 @@ parse_sources(std::string_view input, std::string_view format) {
         std::string_view remaining_format = format.substr(start);
         auto pos = input.find(remaining_format);
         if (input.size() < remaining_format.size() || pos == std::string_view::npos) {
-            return std::unexpected(scan_error{"Unformatted text in input and format string are different"});
+            return std::unexpected(std::move(scan_error{"Unformatted text in input and format string are different"}));
         }
         input_parts.emplace_back(input.substr(0, pos));
         input = input.substr(pos + remaining_format.size());
