@@ -41,6 +41,10 @@ std::expected<details::scan_result<Ts...>, details::scan_error> scan(std::string
     }
     auto [parsed_format, parsed_input] = parsed_sources.value();
 
+    if (parsed_format.size() != sizeof...(Ts)) {
+        return std::unexpected(std::move(details::scan_error{"Types are not correspond placeholders"}));
+    }
+
     // remove reference используется чтобы избежать проблем при выводе типов в случае ссылочных типов
     auto values = [&]<std::size_t... Is>(std::index_sequence<Is...>) {
         return std::make_tuple(

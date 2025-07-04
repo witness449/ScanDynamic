@@ -11,7 +11,7 @@ template <typename T, typename... U>
 concept same_types = (std::same_as<std::remove_cv_t<T>, U> || ...);
 
 template <typename T>
-concept d = same_types<T, int8_t, int16_t, int32_t>;
+concept d = same_types<T, int8_t, int16_t, int32_t, int64_t>;
 
 template <typename T>
 concept u = same_types<T, uint8_t, uint16_t, uint32_t, uint64_t>;

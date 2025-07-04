@@ -32,10 +32,11 @@ std::expected<T, scan_error> parse_value(std::string_view input) {
     return T{input.begin(), input.end()};
 }
 
-/*template <typename T>
+// Шаблон-заглушка при инстанцировании запрещенных типов
+template <typename T>
 std::expected<T, scan_error> parse_value(std::string_view input) {
     return std::unexpected(std::move(scan_error{"Incorrect type from parse_value"}));
-}*/
+}
 
 // Функция для парсинга значения с учетом спецификатора формата
 template <typename T>
